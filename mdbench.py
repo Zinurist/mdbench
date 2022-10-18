@@ -44,6 +44,7 @@ import string
 from datetime import datetime
 import math
 import random
+from pathos.multiprocessing import ProcessingPool as Pool
 
 DIR = 'dir.'
 FILE = 'file.'
@@ -69,6 +70,7 @@ class MovingAvg:
 		self._count = 0
 		self._sigma = 0.0
 		self._total = 0
+		self._timePassed = 0
 
 	def avg(self):
 		"""
@@ -103,6 +105,12 @@ class MovingAvg:
 		"""
 		return self._count
 
+	def timePassed(self):
+		return self._timePassed
+
+	def setTimePassed(self, v):
+		self._timePassed = v
+
 
 dir_creates = MovingAvg()
 file_creates = MovingAvg()
@@ -124,102 +132,161 @@ def get_size(s):
 
 	return int(s[:-1])*DATA_SIZES[last_symbol]
 
-def make_dirs(root, count):
-	for i in range(count):
-		mkdir( gen_dir(root, i) )
+def make_dirs(pool, root, count):
+	def f(i):
+		return mkdir( gen_dir(root, i) )
+	start = datetime.now()
+	res = pool.map(f, range(count))
+	end = datetime.now()
+	for r in res: dir_creates.update(r)
+	dir_creates.setTimePassed(total_millis(end - start))
 
-def make_files(root, dir_count, file_count, size = 0, random_data = False):
-
-	for j in range(file_count):
+def make_files(pool, root, dir_count, file_count, size = 0, random_data = False):
+	def f(j):
 		if dir_count > 0:
+			res = []
 			for i in range(dir_count):
-				mkfile(gen_file( gen_dir(root, i), j ), size, 1024, random_data = random_data)
+				res.append( mkfile(gen_file( gen_dir(root, i), j ), size, 1024, random_data = random_data) )
+			return res
 		else:
-			mkfile(gen_file(root, j), size, 1024, random_data = random_data)
+			return [mkfile(gen_file(root, j), size, 1024, random_data = random_data)]
+	start = datetime.now()
+	ress = pool.map(f, range(file_count))
+	end = datetime.now()
+	for res in ress:
+		for r in res:
+			file_creates.update(r)
+	file_creates.setTimePassed(total_millis(end - start))
 
-def del_files(root, dir_count, file_count):
-	for j in range(file_count):
+def del_files(pool, root, dir_count, file_count):
+	def f(j):
 		if dir_count > 0:
+			res = []
 			for i in range(dir_count):
-				rmfile(gen_file( gen_dir(root, i), j ))
+				res.append( rmfile(gen_file( gen_dir(root, i), j )) )
+			return res
 		else:
-			rmfile(gen_file(root, j))
+			return [rmfile(gen_file(root, j))]
+	start = datetime.now()
+	ress = pool.map(f, range(file_count))
+	end = datetime.now()
+	for res in ress:
+		for r in res:
+			file_removes.update(r)
+	file_removes.setTimePassed(total_millis(end - start))
 
-def del_dirs(root, count):
-	for i in range(count):
-		rmdir( gen_dir(root, i) )
+def del_dirs(pool, root, count):
+	def f(i):
+		return rmdir( gen_dir(root, i) )
+	start = datetime.now()
+	res = pool.map(f, range(count))
+	end = datetime.now()
+	for r in res: dir_removes.update(r)
+	dir_removes.setTimePassed(total_millis(end - start))
 
-def stat_dirs(root, count):
-	for i in range(count):
-		statdir( gen_dir(root, i) )
+def stat_dirs(pool, root, count):
+	def f(i):
+		return statdir( gen_dir(root, i) )
+	start = datetime.now()
+	res = pool.map(f, range(count))
+	end = datetime.now()
+	for r in res: dir_stats.update(r)
+	dir_stats.setTimePassed(total_millis(end - start))
 
-def stat_files(root, dir_count, file_count):
-	for j in range(file_count):
+def stat_files(pool, root, dir_count, file_count):
+	def f(j):
 		if dir_count > 0:
+			res = []
 			for i in range(dir_count):
-				statfile(gen_file( gen_dir(root, i), j ))
+				res.append( statfile(gen_file( gen_dir(root, i), j )) )
+			return res
 		else:
-			statfile(gen_file(root, j))
+			return [statfile(gen_file(root, j))]
+	start = datetime.now()
+	ress = pool.map(f, range(file_count))
+	end = datetime.now()
+	for res in ress:
+		for r in res:
+			file_stats.update(r)
+	file_stats.setTimePassed(total_millis(end - start))
 
-def chmod_files(root, dir_count, file_count):
-	for j in range(file_count):
+def chmod_files(pool, root, dir_count, file_count):
+	def f(j):
 		if dir_count > 0:
+			res = []
 			for i in range(dir_count):
-				chmodfile(gen_file( gen_dir(root, i), j ))
+				res.append( chmodfile(gen_file( gen_dir(root, i), j )) )
+			return res
 		else:
-			chmodfile(gen_file(root, j))
+			return [chmodfile(gen_file(root, j))]
+	start = datetime.now()
+	ress = pool.map(f, range(file_count))
+	end = datetime.now()
+	for res in ress:
+		for r in res:
+			chmod_stats.update(r)
+	chmod_stats.setTimePassed(total_millis(end - start))
 
-def mv_files(root, dir_count, file_count):
-	for j in range(file_count):
+def mv_files(pool, root, dir_count, file_count):
+	def f(j):
 		if dir_count > 0:
+			res = []
 			for i in range(dir_count):
-				mvfile(gen_file( gen_dir(root, i), j ))
+				res.append( mvfile(gen_file( gen_dir(root, i), j )) )
+			return res
 		else:
-			mvfile(gen_file(root, j))
+			return [mvfile(gen_file(root, j))]
+	start = datetime.now()
+	ress = pool.map(f, range(file_count))
+	end = datetime.now()
+	for res in ress:
+		for r in res:
+			mv_stats.update(r)
+	mv_stats.setTimePassed(total_millis(end - start))
 
 
 def rmfile(f):
 	start = datetime.now()
 	os.remove(f)
 	end = datetime.now()
-	file_removes.update(total_millis(end - start))
+	return total_millis(end - start)
 
 def rmdir(d):
 	start = datetime.now()
 	os.rmdir(d)
 	end = datetime.now()
-	dir_removes.update(total_millis(end - start))
+	return total_millis(end - start)
 
 def mkdir(d):
 	start = datetime.now()
 	os.mkdir(d)
 	end = datetime.now()
-	dir_creates.update(total_millis(end - start))
+	return total_millis(end - start)
 
 def chmodfile(f):
 	start = datetime.now()
 	os.chmod(f, 777)
 	end = datetime.now()
-	chmod_stats.update(total_millis(end - start))
+	return total_millis(end - start)
 
 def mvfile(f):
 	start = datetime.now()
 	os.rename(f, "%s_moved" % f)
 	end = datetime.now()
 	os.rename("%s_moved" % f, f)
-	mv_stats.update(total_millis(end - start))
+	return total_millis(end - start)
 
 def statfile(f):
 	start = datetime.now()
 	os.stat(f)
 	end = datetime.now()
-	file_stats.update(total_millis(end - start))
+	return total_millis(end - start)
 
 def statdir(f):
 	start = datetime.now()
 	os.stat(f)
 	end = datetime.now()
-	dir_stats.update(total_millis(end - start))
+	return total_millis(end - start)
 
 def mkfile(fname, size, chunk = 65536, sync = False, random_data = False) :
 
@@ -241,7 +308,7 @@ def mkfile(fname, size, chunk = 65536, sync = False, random_data = False) :
 			os.fsync(f.fileno())
 
 	end = datetime.now()
-	file_creates.update(total_millis(end - start))
+	return total_millis(end - start)
 
 def total_micros(td):
 	return (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6)
@@ -251,14 +318,15 @@ def total_millis(td):
 
 def report(title, counter, csvFile = None):
 	print('{:16}: {:6.2f}ms ±{:=6.2f}ms, {:6.2f} op/s' \
-		.format(title, counter.avg(), counter.std(), counter.count()/counter.sum()*10**3))
+		.format(title, counter.avg(), counter.std(), counter.count()/counter.timePassed()*10**3))
 	if csvFile is not None:
 		with open(csvFile, "a") as f:
-			txt = '%s,%.2f,%.2f,%.2f\n' % (title, counter.avg(), counter.std(), counter.count()/counter.sum()*10**3)
+			txt = '%s,%.2f,%.2f,%.2f\n' % (title, counter.avg(), counter.std(), counter.count()/counter.timePassed()*10**3)
 			f.write(txt)
 DIR_COUNT = 1000
 FILE_COUNT = 10
 FILE_SIZE = 0
+JOB_COUNT = 10
 
 def usage():
 	print(__doc__)
@@ -268,6 +336,7 @@ def main():
 
 	dir_count = DIR_COUNT
 	file_count = FILE_COUNT
+	job_count = JOB_COUNT
 	file_size = FILE_SIZE
 	cleanup = True
 	createContainer = True
@@ -276,7 +345,7 @@ def main():
 	random_data = False
 
 	try:
-		options, remainder = getopt.gnu_getopt(sys.argv[1:], 'f:d:s:c:nher', \
+		options, remainder = getopt.gnu_getopt(sys.argv[1:], 'f:d:j:s:c:nher', \
 					 ['files=','dirs=','size=','no-clean','no-container','extended-checks','csv-file=', "random-date",'help'])
 	except getopt.GetoptError as err:
 		print(str(err))
@@ -287,6 +356,8 @@ def main():
 			file_count = int(arg)
 		elif opt in ('-d', '--dirs'):
 			dir_count = int(arg)
+		elif opt in ('-j', '--jobs'):
+			job_count = int(arg)
 		elif opt in ('-s', '--size'):
 			file_size = get_size(arg)
 		elif opt in ('-n', '--no-clean'):
@@ -308,6 +379,7 @@ def main():
 	path = remainder[0]
 
 	root = '%s/mdbench.%s.%d' % (path, socket.gethostname(), os.getpid()) if createContainer else path
+	pool = Pool(job_count)
 
 	if createContainer:
 		os.mkdir(root)
@@ -321,25 +393,25 @@ def main():
 	print('{:16}: {}'.format( "Starting at: ", t0))
 	print()
 
-	make_dirs(root, dir_count)
+	make_dirs(pool, root, dir_count)
 	report("dir creates", dir_creates, csvFile)
-	make_files(root, dir_count, file_count , file_size, random_data)
+	make_files(pool, root, dir_count, file_count , file_size, random_data)
 	report("file creates", file_creates, csvFile)
-	stat_files(root, dir_count, file_count)
+	stat_files(pool, root, dir_count, file_count)
 	report("file stats", file_stats, csvFile)
 	if extendedChecks:
-		chmod_files(root, dir_count, file_count)
+		chmod_files(pool, root, dir_count, file_count)
 		report("chmod stats", chmod_stats, csvFile)
-		mv_files(root, dir_count, file_count)
+		mv_files(pool, root, dir_count, file_count)
 		report("mv stats", mv_stats, csvFile)
 
-	stat_dirs(root, dir_count)
+	stat_dirs(pool, root, dir_count)
 	report("dir stats", dir_stats, csvFile)
 
 	if cleanup:
-		del_files(root, dir_count, file_count )
+		del_files(pool, root, dir_count, file_count )
 		report("file removes", file_removes, csvFile)
-		del_dirs(root, dir_count )
+		del_dirs(pool, root, dir_count )
 		report("dir removes", dir_removes, csvFile)
 		if createContainer:
 			os.rmdir(root)
@@ -348,6 +420,8 @@ def main():
 	td = t1 - t0
 	print()
 	print('{:16}: {}, runtime: {}'.format( "Finished at: ", t1, td))
+	pool.close()
+	pool.terminate()
 
 if __name__ == '__main__':
 	main()

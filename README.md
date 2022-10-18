@@ -33,6 +33,16 @@ file removes    : 1823.41μ ±1139.57μ, 548.42 op/s
 dir removes     : 3556.00μ ±  0.00μ, 281.21 op/s
 ```
 
+Requirements
+------------
+`pathos` is needed. Example setup with venv:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+pip3 install pathos
+```
+
 Alternatives
 ------------
 
